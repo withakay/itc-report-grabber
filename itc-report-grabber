@@ -109,6 +109,10 @@ class App
               "--passwd PASSWORD",
               "your iTunes Connect password - required") { |pwd| @options.passwd = pwd }
               
+      opts.on("-d", 
+              "--date 'MM/DD/YYYY",
+              "an optional date of the report to get, of ommited the latest report is grabbed. Must be the format 'MM/DD/YYYY'") { |date| @options.date = date }
+              
             
       opts.parse!(@arguments) #rescue return false
       
@@ -160,28 +164,33 @@ class App
     end
     
     def process_command
-		log = Logger.new(STDOUT)
-		log.level = Logger::DEBUG
-		report_path = "reports"
-		db_path = "db"
-		grabber = ItcReportGrabber.new(@options.user, @options.passwd)
-		parser = ItcReportParser.new
-		persister = ItcReportPersister.new(db_path)
+  		log = Logger.new(STDOUT)
+  		log.level = Logger::DEBUG
+  		report_path = "reports"
+  		db_path = "db"
+  		grabber = ItcReportGrabber.new(@options.user, @options.passwd)
+  		parser = ItcReportParser.new
+  		persister = ItcReportPersister.new(db_path)
 
-		begin
-			file_name = grabber.get_latest_report(report_path)
-			if file_name.length > 0
-				report = parser.parse(File.join(report_path, file_name))
-				persister.save_report(report)
-			else
-				send_email("jack@bubble.com", "itc report grabber", "jack@bubble.com", "Jack", "[itc-report-grabber] file already exists", "file already exists")
-			end
+  		begin
+  		  file_name = ""
+  		  if @options.date
+  		    file_name = grabber.get_report(report_path, @options.date)
+		    else
+    			file_name = grabber.get_latest_report(report_path)
+  			end
+  			if file_name.length > 0
+  				report = parser.parse(File.join(report_path, file_name))
+  				persister.save_report(report)
+  			else
+  				send_email("jack@bubble.com", "itc report grabber", "jack@bubble.com", "Jack", "[itc-report-grabber] file already exists", "file already exists")
+  			end
 
-		rescue Exception => e
-			log.fatal "Exception occured"
-			log.fatal e
-			send_email("jack@bubble.com", "itc report grabber", "jack@fader.co.uk", "Jack", "[itc-report-grabber] Exception occured", e)
-		end
+  		rescue Exception => e
+  			log.fatal "Exception occured"
+  			log.fatal e
+  			send_email("jack@bubble.com", "itc report grabber", "jack@bubble.com",  "Jack", "[itc-report-grabber] Exception occured", e)
+  		end
     end
 
     def process_standard_input
