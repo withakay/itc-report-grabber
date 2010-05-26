@@ -11,33 +11,33 @@ class ItcReportPersister
   def create_report_table?
     @DB.create_table? String :itc_daily_reports do
       primary_key :id
-      String :Provider
-      String :ProviderCountry
-      String :VendorIdentifier
-      String :UPC
-      String :ISRC
-      String :ArtistShow
-      String :TitleEpisodeSeason
-      String :LabelStudioNetwork
-      String :ProductTypeIdentifier
-      Fixnum :Units
-      Numeric :RoyaltyPrice
-      Date :BeginDate
-      Date :EndDate
-      String :CustomerCurrency
-      String :CountryCode
-      Numeric :RoyaltyCurrency
-      String :Preorder
-      String :SeasonPass
-      String :ISAN
-      String :AppleIdentifier
-      Numeric :CustomerPrice
-      String :CMA
-      String :AssetContentFlavor
-      String :VendorOfferCode
-      String :Grid
-      String :PromoCode
-      String :ParentIdentifier
+      string :provider
+      string :provider_country
+      string :vendor_identifier
+      string :upc
+      string :isrc
+      string :artist_show
+      string :title_episode_season
+      string :label_studio_network
+      string :product_type_identifier
+      fixnum :units
+      numeric :royalty_price
+      date :begin_date
+      date :end_date
+      string :customer_currency
+      string :country_code
+      numeric :royalty_currency
+      string :preorder
+      string :season_pass
+      string :isan
+      string :apple_identifier
+      numeric :customer_price
+      string :cma
+      string :asset_content_flavor
+      string :vendor_offer_code
+      string :grid
+      string :promo_code
+      string :parent_identifier
     end
   end
   

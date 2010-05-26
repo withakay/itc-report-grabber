@@ -30,10 +30,11 @@ class ItcReportParser
       record.split("\t").each do |field|
         field.chomp!
         # do something here with each field
-        column_names.push field.gsub(" ", "").gsub("/", "")
+        column_names.push field.gsub("/", "_").gsub(" ", "_").gsub("___", "_").downcase
       end
       break   
     end
+    p column_names
     column_names
   end
   
