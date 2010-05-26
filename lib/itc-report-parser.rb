@@ -34,7 +34,6 @@ class ItcReportParser
       end
       break   
     end
-    p column_names
     column_names
   end
   

@@ -55,6 +55,7 @@ class App
   VERSION = '0.0.1'
   
   attr_reader :options
+  attr_reader :config
   attr_accessor :arguments
   
   def initialize(arguments, stdin)
@@ -67,13 +68,17 @@ class App
     @options.quiet = false
     @options.user = ""
     @options.passwd = ""
+    @options.db_path = "db"
+    @options.report_path = "reports"
     # TO DO - add additional defaults
+    
+    @config = {}
   end
 
   # Parse options, check arguments, then process the command
   def run
         
-    if parsed_options? && arguments_valid? 
+    if parsed_options? && arguments_valid? && parsed_config?
       
       puts "Start at #{DateTime.now}\n\n" if @options.verbose
       
@@ -113,10 +118,29 @@ class App
               "--date 'MM/DD/YYYY",
               "an optional date of the report to get, of ommited the latest report is grabbed. Must be the format 'MM/DD/YYYY'") { |date| @options.date = date }
               
+      opts.on("-r", 
+              "--reportpath PATH_TO_STORE_REPORTS",
+              "path to store the downloaded report files in") { |rp| @options.report_path = rp }
+              
+      opts.on("-D", 
+              "--dbpath PATH_TO_DB",
+              "path to the sqlite3 database to import the reports into") { |dbp| @options.db_path = dbp }
+  
+      opts.on("-i", 
+              "--import REPORT_FILE",
+              "path to a report file to manually import *cannot be used with --date*") { |ip| @options.import_path = ip }
+              
+      opts.on("-c", 
+              "--config CONFIG_FILE",
+              "path to a config file") { |cp| @options.config_path = cp }
+              
             
       opts.parse!(@arguments) #rescue return false
       
       #process_options
+      if @options.import_path
+        return true
+      end
       if @options.user == ""
         return false 
       end
@@ -124,6 +148,26 @@ class App
          return false 
       end
       true      
+    end
+    
+    def parsed_config?
+      config_file = @options.config_path
+      if config_file.nil?
+        config_file = "config.conf"
+      end
+      File.foreach(config_file) do |line|
+        line.strip!
+        # Skip comments and whitespace
+        if (line[0] != ?# and line =~ /\S/ )
+          i = line.index('=')
+          if (i)
+            @config[line[0..i - 1].strip] = line[i + 1..-1].strip
+          else
+            @config[line] = ''
+          end
+        end
+      end
+      true
     end
 
     # Performs post-parse processing on options
@@ -166,30 +210,42 @@ class App
     def process_command
   		log = Logger.new(STDOUT)
   		log.level = Logger::DEBUG
-  		report_path = "reports"
-  		db_path = "db"
+  		report_path = @options.report_path
+  		db_path = @options.db_path
   		grabber = ItcReportGrabber.new(@options.user, @options.passwd)
   		parser = ItcReportParser.new
   		persister = ItcReportPersister.new(db_path)
 
   		begin
+  		  # first we need a report file
   		  file_name = ""
   		  if @options.date
   		    file_name = grabber.get_report(report_path, @options.date)
+  		  elsif @options.import_path
+  		    file_name = @options.import_path
 		    else
     			file_name = grabber.get_latest_report(report_path)
   			end
+  			
   			if file_name.length > 0
-  				report = parser.parse(File.join(report_path, file_name))
-  				persister.save_report(report)
+  			  import_file = File.join(report_path, file_name)
+  			  if @options.import_path
+  			    import_file = @options.import_path
+  			  end
+  			  if File.exists?(import_file)
+  				  report = parser.parse(import_file)
+    				persister.save_report(report)
+  				else
+  				  raise StandardError, "Could not locate report file at path " + import_file
+				  end
   			else
-  				send_email("jack@bubble.com", "itc report grabber", "jack@bubble.com", "Jack", "[itc-report-grabber] file already exists", "file already exists")
+  				send_email("[itc-report-grabber] file already exists", "file already exists")
   			end
 
   		rescue Exception => e
   			log.fatal "Exception occured"
   			log.fatal e
-  			send_email("jack@bubble.com", "itc report grabber", "jack@bubble.com",  "Jack", "[itc-report-grabber] Exception occured", e)
+  			send_email("[itc-report-grabber] Exception occured", e)
   		end
     end
 
@@ -203,10 +259,11 @@ class App
       #end
     end
 
-  	def send_email(from, from_alias, to, to_alias, subject, message)
+  	def send_email(subject, message)
+  	  
   		msg = <<END_OF_MESSAGE
-From: #{from_alias} <#{from}>
-To: #{to_alias} <#{to}>
+From: #{@config["from_alias"]} <#{@config["from_email"]}>
+To: #{@config["to_alias"]} <#{@config["to_email"]}>
 Subject: #{subject}
 
 #{message}
