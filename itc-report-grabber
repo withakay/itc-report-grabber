@@ -38,13 +38,12 @@
 # TO DO - change license if necessary
 
 
-
-require 'optparse' 
-require 'rdoc/usage'
+require 'rubygems'
+require 'optparse'
 require 'ostruct'
 require 'date'
 
-require 'rubygems'
+
 require 'logger'
 require 'net/smtp'
 require 'lib/itc-report-grabber.rb'
@@ -52,7 +51,7 @@ require 'lib/itc-report-parser.rb'
 require 'lib/itc-report-persister.rb'
 
 class App
-  VERSION = '0.0.1'
+  VERSION = '0.1.0'
   
   attr_reader :options
   attr_reader :config
@@ -78,19 +77,12 @@ class App
   # Parse options, check arguments, then process the command
   def run
         
-    if parsed_options? && arguments_valid? && parsed_config?
-      
-      puts "Start at #{DateTime.now}\n\n" if @options.verbose
-      
-      output_options if @options.verbose # [Optional]
-            
+    if parsed_options? && arguments_valid? && parsed_config?      
+      puts "Start at #{DateTime.now}\n\n" if @options.verbose      
+      output_options if @options.verbose # [Optional]            
       process_arguments            
-      process_command
-      
-      puts "\nFinished at #{DateTime.now}" if @options.verbose
-      
-    else
-      output_usage
+      process_command      
+      puts "\nFinished at #{DateTime.now}" if @options.verbose      
     end
       
   end
@@ -98,17 +90,16 @@ class App
   protected
   
     def parsed_options?
-      
       # Specify options
       opts = OptionParser.new 
+      opts.banner = "Usage: itc-report-grabber [options]"
       opts.on('-v', '--version')    { output_version ; exit 0 }
-      opts.on('-h', '--help')       { output_help }
       opts.on('-V', '--verbose')    { @options.verbose = true }  
       opts.on('-q', '--quiet')      { @options.quiet = true }
       # TO DO - add additional options
       opts.on("-u", 
               "--user USERNAME",
-              "your itune Connect username - required") { |user| @options.user = user }
+              "your iTunes Connect username - required") { |user| @options.user = user }
               
       opts.on("-p", 
               "--passwd PASSWORD",
@@ -133,10 +124,14 @@ class App
       opts.on("-c", 
               "--config CONFIG_FILE",
               "path to a config file") { |cp| @options.config_path = cp }
-              
-            
-      opts.parse!(@arguments) #rescue return false
       
+      opts.on('-h', '--help'){ puts opts }       
+      
+      if @arguments.length > 0
+        opts.parse!(@arguments) #rescue return false
+      else
+        puts opts.banner
+      end
       #process_options
       if @options.import_path
         return true
@@ -176,8 +171,7 @@ class App
     end
     
     def output_options
-      puts "Options:\n"
-      
+      puts "Options:\n"      
       @options.marshal_dump.each do |name, val|        
         puts "  #{name} = #{val}"
       end
@@ -192,15 +186,6 @@ class App
     # Setup the arguments
     def process_arguments
       # No arguments to process
-    end
-    
-    def output_help
-      output_version
-      RDoc::usage() #exits app
-    end
-    
-    def output_usage
-      RDoc::usage('usage') # gets usage from comments above
     end
     
     def output_version
@@ -261,7 +246,9 @@ class App
 
   	def send_email(subject, message)
   	  
-  		msg = <<END_OF_MESSAGE
+  	  unless @config.nil?
+  	  
+    		msg = <<END_OF_MESSAGE
 From: #{@config["from_alias"]} <#{@config["from_email"]}>
 To: #{@config["to_alias"]} <#{@config["to_email"]}>
 Subject: #{subject}
@@ -269,9 +256,10 @@ Subject: #{subject}
 #{message}
 END_OF_MESSAGE
 
-  		Net::SMTP.start('mail.bubble.com') do |smtp|
-  			smtp.send_message msg, from, to
-  		end
+  		  Net::SMTP.start(@config["smtp_server"]) do |smtp|
+    			smtp.send_message msg, @config["from_email"], @config["to_email"]
+    		end
+    	end
   	end
 end
 
