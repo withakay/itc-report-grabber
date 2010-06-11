@@ -29,21 +29,23 @@ class ItcReportGrabber
     # if the login details were correct we should now be logged in
     page = @agent.get('https://itts.apple.com/cgi-bin/WebObjects/Piano.woa')
     # TODO - check if the login actually worked rather than assuming it did.
+    puts page.inspect
     download_form = page.forms[1]
     # type
-    download_form["17.9"] = "Summary" 
-    download_form["17.11"] = "Daily" 
+    download_form[page.search('//*[@id="selReportType"]')[0]['name']] = "Summary" 
+    download_form[page.search('//*[@id="selDateType"]')[0]['name']] = "Daily"
     download_form["hiddenSubmitTypeName"] = "ShowDropDown"
     # we need to submit what we have so far, this will load the form with the 
     page = @agent.submit(download_form)
     download_form = page.forms[1]
-    download_form["17.9"] = "Summary" 
-    download_form["17.11"] = "Daily"
+    download_form[page.search('//*[@id="selReportType"]')[0]['name']] = "Summary" 
+    download_form[page.search('//*[@id="selDateType"]')[0]['name']] = "Daily"
     if date 
-      download_form["17.13.1"] = date
+      download_form[page.search('//*[@id="dayorweekdropdown"]')[0]['name']] = "Daily"
     end
     #"17.13.1" is the name of the select box with the available dates
-    download_form["hiddenDayOrWeekSelection"] = download_form["17.13.1"]
+    #download_form["hiddenDayOrWeekSelection"] = download_form["17.13.1"]
+    download_form["hiddenDayOrWeekSelection"] = download_form[page.search('//*[@id="dayorweekdropdown"]')[0]['name']]
     download_form["hiddenSubmitTypeName"] = "Download"
     download_form["download"] = "Download"
 
